@@ -96,9 +96,9 @@ function get_rss_cate_list(){
   $sql = "select * from ".$xoopsDB->prefix("tad_rss")." where enable='1'";
   $result = $xoopsDB->query($sql) or redirect_header($_SERVER['PHP_SELF'],3, mysql_error());
 
-  while(list($rss_sn,$title,$url)=$xoopsDB->fetchRow($result)){
+  while(list($rss_sn,$title,$url,$web_url)=$xoopsDB->fetchRow($result)){
 
-    $list.="<li data-icon='false'><a href='{$_SERVER['PHP_SELF']}?op=view&rss_sn={$rss_sn}'>{$title}</a></li>";
+    $list.="<li data-icon='false'><a href='{$_SERVER['PHP_SELF']}?op=view&rss_sn={$rss_sn}'><img src='http://www.google.com/s2/favicons?domain={$web_url}' class='ui-li-icon'>{$title}</a></li>";
   }
   $list.="</ul>";
   return $list;
@@ -175,7 +175,13 @@ echo "
     padding: 0.4em 15px;
   }
   #menu a.ui-link-inherit {
-    padding: 0.8em 15px;
+    padding: 0.8em 15px 0.8em 40px;
+  }
+  #menu a.ui-link-inherit img{
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.22);
+    padding: 2px;
+    background-color: #FFF;
+    top: 0.8em;
   }
   .inner-content li{
     background-color: transparent;
