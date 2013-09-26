@@ -62,11 +62,12 @@ function insert_tad_rss(){
 	$feed->handle_content_type();
 	$feed->set_output_encoding(_CHARSET);
 	$title=$feed->get_title();
+	$web_url=$feed->get_permalink();
 	
 
 	$sql = "insert into ".$xoopsDB->prefix("tad_rss")."
-	(`title` , `url` , `enable`)
-	values('{$title}' , '{$_POST['url']}' , '1')";
+	(`title` , `url`, `web_url` , `enable`)
+	values('{$title}' , '{$_POST['url']}' , '{$web_url}' , '1')";
 	$xoopsDB->query($sql) or redirect_header($_SERVER['PHP_SELF'],3, mysql_error());
 
 	//取得最後新增資料的流水編號
