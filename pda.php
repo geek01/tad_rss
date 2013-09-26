@@ -91,7 +91,7 @@ function get_rss_cate_list(){
     <li data-icon='delete'>
       <a href='#' data-rel='close'>RSS Feeds List</a>
     </li>
-    <li data-icon='false'><a href='{$_SERVER['PHP_SELF']}'>All</a></li>";
+    <li data-icon='false'><a href='{$_SERVER['PHP_SELF']}'><img src='images/icons/rss.png' class='ui-li-icon'>All</a></li>";
 
   $sql = "select * from ".$xoopsDB->prefix("tad_rss")." where enable='1'";
   $result = $xoopsDB->query($sql) or redirect_header($_SERVER['PHP_SELF'],3, mysql_error());
