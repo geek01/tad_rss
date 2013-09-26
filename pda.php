@@ -84,14 +84,42 @@ function get_rss_by_simplepie($rss_sn="",$url="",$maxitems=5){
 
 //取得所有RSS清單
 function get_rss_cate_list(){
-  global $xoopsDB;
+  global $xoopsDB,$xoopsUser;
+
+  $isAdmin=isadmin();
+
+  if ($xoopsUser) {
+    $username=$xoopsUser->name();
+  } else {
+    $username="Anonymous";
+  }
 
   $list="
   <ul data-role='listview' style='margin-top:-16px;'>
     <li data-icon='delete'>
       <a href='#' data-rel='close'>RSS Feeds List</a>
     </li>
+    <li data-icon='false' style='font-size:0.8em;color:#999'>{$username}</li>
     <li data-icon='false'><a href='{$_SERVER['PHP_SELF']}'><img src='images/icons/rss.png' class='ui-li-icon'>All</a></li>";
+
+  if($isAdmin){
+    $controlnav="
+    <div style='margin:50px -15px 0 -15px'>
+    <div data-role='navbar' data-iconpos='left'>
+      <ul>
+        <li><a href='#add' data-icon='plus' data-transition='slideup'>Add</a></li>
+        <li><a href='admin/main.php' data-icon='gear' rel='external'>Settings</a></li>
+      </ul>
+    </div>
+    </div>";
+  } elseif ($xoopsUser) {
+    $controlnav="";
+  } else {
+    $controlnav="
+    <div style='margin:50px -13px 0 -15px'>
+      <a href='#login' data-role='button' data-inline='true' data-corners='false' data-shadow='false' style='margin:0;width:100%' data-transition='slideup'>Login</a>
+    </div>";
+  }
 
   $sql = "select * from ".$xoopsDB->prefix("tad_rss")." where enable='1'";
   $result = $xoopsDB->query($sql) or redirect_header($_SERVER['PHP_SELF'],3, mysql_error());
@@ -100,7 +128,8 @@ function get_rss_cate_list(){
 
     $list.="<li data-icon='false'><a href='{$_SERVER['PHP_SELF']}?op=view&rss_sn={$rss_sn}'><img src='http://www.google.com/s2/favicons?domain={$web_url}' class='ui-li-icon'>{$title}</a></li>";
   }
-  $list.="</ul>";
+  $list.="</ul>{$controlnav}";
+
   return $list;
 }
 
@@ -132,6 +161,80 @@ function get_rss_data($rss_sn=""){
   return $data;
 }
 
+//add編輯表單
+function add_rss_form(){
+  global $xoopsUser;
+
+  $isAdmin=isadmin();
+
+  $data="";
+  if($isAdmin){
+  $data="
+    <form action='{$_SERVER['PHP_SELF']}' method='post' id='myForm' enctype='multipart/form-data'>
+      <div class='controls controls-row'>
+        <input type='text' name='url' value='' id='url' placeholder='Enter RSS Feed URL'>
+        <input type='hidden' name='op' value='insert_tad_rss'>
+        <button type='submit'>Save</button>
+      </div>
+    </form>
+  ";
+  }
+  return $data;
+}
+
+//新增資料到tad_rss中
+function insert_tad_rss(){
+  global $xoopsDB,$xoopsUser;
+
+  require_once(XOOPS_ROOT_PATH.'/modules/tad_rss/class/simplepie/SimplePie.compiled.php');
+  $feed = new SimplePie();
+  $feed->set_feed_url($_POST['url']);
+  $feed->set_cache_location(XOOPS_ROOT_PATH."/uploads/simplepie_cache");
+  $feed->init();
+  $feed->handle_content_type();
+  $feed->set_output_encoding(_CHARSET);
+  $title=$feed->get_title();
+  $web_url=$feed->get_permalink();
+
+  $sql = "insert into ".$xoopsDB->prefix("tad_rss")."
+  (`title` , `url`, `web_url` , `enable`)
+  values('{$title}' , '{$_POST['url']}' , '{$web_url}' , '1')";
+  $xoopsDB->query($sql) or redirect_header($_SERVER['PHP_SELF'],3, mysql_error());
+
+  //取得最後新增資料的流水編號
+  $rss_sn=$xoopsDB->getInsertId();
+  return $rss_sn;
+}
+
+function login_panel(){
+  global $xoopsUser;
+
+  if(!$xoopsUser){
+  $data="
+    <form method='post' action='".XOOPS_URL."/user.php' data-ajax='false'>
+      User:<br>
+      <input type='text' maxlength='25' value='' size='12' name='uname'>
+       Password:<br>
+      <input type='password' maxlength='32' size='12' name='pass'><br>
+      <input type='hidden' value='/modules/tad_rss/pda.php' name='xoops_redirect'>
+      <input type='hidden' value='login' name='op'>
+      <button type='submit' name='submit' value='Login'>Login</button><br>
+    </form>
+  ";
+  }
+  return $data;
+}
+
+//判斷是否為管理員
+function isAdmin(){
+  global $xoopsUser,$xoopsModule;
+  $isAdmin=false;
+  if ($xoopsUser) {
+    $module_id = $xoopsModule->getVar('mid');
+    $isAdmin=$xoopsUser->isAdmin($module_id);
+  }
+  return $isAdmin;
+}
 
 /*-----------執行動作判斷區----------*/
 $op=(empty($_REQUEST['op']))?"":$_REQUEST['op'];
@@ -145,6 +248,11 @@ switch($op){
     $title=$one['title'];
   break;
 
+  case "insert_tad_rss":
+    insert_tad_rss();
+    header("location: {$_SERVER['PHP_SELF']}");
+  break;
+
   default:
     $main=list_tad_rss($xoopsModuleConfig['show_num']);
     $title=$xoopsModule->getVar('name');
@@ -153,6 +261,8 @@ switch($op){
 
 /*-----------秀出結果區--------------*/
 $menu=get_rss_cate_list();
+$login=login_panel();
+$add=add_rss_form();
 
 
 echo "
@@ -233,6 +343,24 @@ echo "
   </div>
   <div data-role='panel' data-position='left' data-display='push' id='menu' data-theme='c'>
     {$menu}
+  </div>
+</div>
+<!-- Login -->
+<div data-role='page' id='login'>
+  <div data-theme='c' data-role='header' data-position='fixed'>
+    <h3>Administrator Login</h3>
+  </div>
+  <div data-role='content'>
+    {$login}
+  </div>
+</div>
+<!-- addrss -->
+<div data-role='page' id='add'>
+  <div data-theme='c' data-role='header' data-position='fixed'>
+    <h3>Add</h3>
+  </div>
+  <div data-role='content'>
+    {$add}
   </div>
 </div>
 </body>
